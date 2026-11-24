@@ -25,6 +25,8 @@ def validate_entry(text: str) -> None:
     - more than one line
     - leading or trailing whitespace
     - any control character (C0, C1, DEL, U+2028, U+2029, U+FEFF)
+    - a U+FFFD replacement character (sign of corrupted/decoded text)
+    - a lone surrogate (U+D800..U+DFFF), which cannot be encoded as UTF-8
     """
     if not text:
         raise ValueError("entry is empty")
@@ -41,14 +43,15 @@ def validate_entry(text: str) -> None:
         if (
             code < 0x20
             or 0x7F <= code <= 0x9F
-            or ch in ("\u2028", "\u2029", "\ufeff")
+            or 0xD800 <= code <= 0xDFFF
+            or ch in ("\u2028", "\u2029", "\ufeff", "\ufffd")
         ):
             raise ValueError(f"entry contains forbidden character U+{code:04X}")
 
 
 def main() -> None:
     validate_entry(ENTRY)
-    encoded = ENTRY.encode("utf-8")
+    encoded = ENTRY.encode("utf-8", errors="strict")
     # Round-trip check: the bytes we write must decode back to the entry.
     if encoded.decode("utf-8") != ENTRY:
         raise ValueError("entry is not valid UTF-8 round-trip text")
